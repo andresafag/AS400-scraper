@@ -1,11 +1,11 @@
-**AS400 Hourly Scraper 🚀**
+# AS400-scraper 🚀
 
 Automates hourly scraping of ASP usage from an IBM i (AS/400) `PROD1` console and writes the results into a turnover document. This tool saves time, reduces human error, and frees up the team to focus on higher-value tasks — perfect to showcase automation skills to recruiters. ✨
 
 **Key Features**
 - **Purpose**: Collects ASP usage every hour on the dot and populates a Microsoft Word turnover document. ⏱️📄
 - **Reliable**: Waits for the exact sharp hour (e.g., 14:00) before scraping to keep reports aligned with business requirements. ✅
-- **Hands-free**: Runs continuously in the background, so you can be on calls or multitask without missing reports. 🤝📞
+- **Hands-free**: Runs continuously in the background, so employees can be on calls or multitask without missing reports. 🤝📞
 - **Readable output**: Updates a Word (.docx) file used by operations to deliver daily turnover information. 📝
 
 **How It Works 🔎**
@@ -35,7 +35,7 @@ python as400_scraper.py
 ```
 
 **Run as a Background Service 🛠️**
-- To keep the scraper running across restarts consider one of these options:
+- To keep the scraper running across restarts we consider one of these options:
   - **systemd service** (recommended on Linux)
   - **tmux / screen** session
   - **Docker container** (package and run with a lightweight image) 🐳
@@ -46,22 +46,18 @@ Example `crontab` alternative (runs at startup and keeps process managed elsewhe
 @reboot /usr/bin/python /path/to/as400_scraper.py &
 ```
 
+![alt text](<Screenshot 2026-06-03 210737.png>) ![alt text](<Screenshot 2026-06-03 210525.png>)
+
 **Security & Best Practices 🔒**
-- Do not hard-code credentials. Use environment variables (as in the script) or a secrets manager. 🗝️
-- Limit SSH access to the service account used by the scraper and use key-based auth where possible. The current script uses password auth; consider migrating to SSH keys. 🔑
-- Ensure the machine running the script has access to the timezone database (`tzdata`) on Linux. 🕰️
+- We do not hard-code credentials. Make use of environment variables (as in the script). 🗝️
+- Ensure the machine running the script has access to the timezone database (`tzdata`). 🕰️
 
 **Dependencies 📦**
 - See `requirements.txt` for Python packages required to run the scraper. ✅
 
-**Troubleshooting 🛟**
-- If SSH fails: verify `PROD1` hostname, network connectivity, and credentials. 🔍
-- If parsing fails: confirm the `dspaspbrm` output format hasn't changed. The script uses a regex to parse usage values; small changes in console output can break parsing. 🧪
-- If writing to the Word file fails: ensure the `file_path` is correct, writable, and that any Windows-style paths are adapted for the host running the script. 💾
-
 **Why this matters (for recruiters) ✨**
 - **Impact**: Automates a manual hourly operation, reducing turnaround time and human error. 🎯
-- **Skills demonstrated**: Remote systems automation, SSH integration, text parsing with regular expressions, programmatic Word file editing, timezone-aware scheduling, and production-ready thinking (background services). 🧠
+- **Skills demonstrated**: Remote systems automation, text parsing with regular expressions, programmatic Word file editing, timezone-aware scheduling, and production-ready thinking (background services). 🧠
 
 **Next Steps / Improvements 🔧**
 - Add SSH key authentication and remove password text handling.
@@ -73,4 +69,4 @@ Example `crontab` alternative (runs at startup and keeps process managed elsewhe
 - Script author: Automations & Scripting Team 🙌
 
 Thank you for reviewing — this small automation is a great example of practical impact through scripting. 🌟
-# AS400-scraper
+
