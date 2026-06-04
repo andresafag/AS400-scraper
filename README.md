@@ -1,4 +1,4 @@
-# AS400-scraper 🚀
+# AS400-scraper Automation🚀
 
 Automates hourly scraping of ASP usage from an IBM i (AS/400) `PROD1` console and writes the results into a turnover document. This tool saves time, reduces human error, and frees up the team to focus on higher-value tasks — perfect to showcase automation skills to recruiters. ✨
 
