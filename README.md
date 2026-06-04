@@ -45,7 +45,7 @@ Example `crontab` alternative (runs at startup and keeps process managed elsewhe
 ```
 @reboot /usr/bin/python /path/to/as400_scraper.py &
 ```
-
+![alt text](<Screenshot 2026-06-03 210558.png>)
 ![alt text](<Screenshot 2026-06-03 210737.png>) ![alt text](<Screenshot 2026-06-03 210525.png>)
 
 **Security & Best Practices 🔒**
