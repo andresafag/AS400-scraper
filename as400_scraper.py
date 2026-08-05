@@ -1,10 +1,11 @@
-import paramiko
-import re
-from docx import Document
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+import paramiko
+from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 bogota_tz = ZoneInfo("America/Bogota")
