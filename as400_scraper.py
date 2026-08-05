@@ -21,13 +21,13 @@ print(file_path)
 # 2. DEFINE ALL FUNCTIONS FIRST
 def run_as400_cmd(command):
     system_name = "PROD1"
-    user = user
+    ssh_user = user
     pwd = password
 
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(system_name, username=user, password=pwd, timeout=10)
+        ssh.connect(system_name, username=ssh_user, password=pwd, timeout=10)
 
         full_cmd = f'system -i "{command}"'
         stdin, stdout, stderr = ssh.exec_command(full_cmd)
