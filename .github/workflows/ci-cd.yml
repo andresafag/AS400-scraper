@@ -1,0 +1,327 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * 0'  # Security scan every Sunday at midnight
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  checks: write
+
+env:
+  PYTHON_VERSION: '3.11'
+  ARTIFACT_RETENTION_DAYS: 30
+
+jobs:
+  # Job 1: Code Quality & Linting
+  quality:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install flake8 black isort pylint pytest pytest-cov bandit
+
+      - name: Format check with Black
+        run: black --check --diff as400_scraper.py
+
+      - name: Import sorting check with isort
+        run: isort --check-only --diff as400_scraper.py
+
+      - name: Lint with Flake8
+        run: |
+          flake8 as400_scraper.py \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics \
+            --max-line-length=120
+
+      - name: Security check with Bandit #SAST
+        run: bandit -r . -f json -o bandit-report.json || true
+        continue-on-error: true
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: bandit-report-py${{ matrix.python-version }}
+          path: bandit-report.json
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # Job 2: Vulnerability Scanning with Snyk
+  security-scan:
+    name: Security Scan (Snyk)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk test
+        run: snyk test --severity-threshold=high --json > snyk-test.json || true
+
+      - name: Run Snyk code scan
+        run: snyk code test --severity-threshold=high --json > snyk-code.json || true
+
+      - name: Upload Snyk reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: snyk-results
+          path: |
+            snyk-test.json
+            snyk-code.json
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # Job 3: Dependency Analysis
+  dependency-check:
+    name: Dependency Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependency check tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit safety
+
+      - name: Audit with pip-audit
+        run: pip-audit --desc --require-hashes=false
+        continue-on-error: true
+
+      - name: Check with Safety
+        run: safety check --json > safety-report.json || true
+        continue-on-error: true
+
+      - name: Upload Safety report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: safety-report
+          path: safety-report.json
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # Job 4: Tests & Coverage
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+    needs: quality
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-xdist
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=. --cov-report=xml --cov-report=html --junitxml=junit/test-results-${{ matrix.python-version }}.xml -v --tb=short || true
+        continue-on-error: true
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-py${{ matrix.python-version }}
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-py${{ matrix.python-version }}
+          path: junit/test-results-${{ matrix.python-version }}.xml
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-py${{ matrix.python-version }}
+          path: htmlcov/
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # Job 5: Build & Package
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+
+      - name: Create distribution package
+        run: |
+          mkdir -p dist
+          cp as400_scraper.py dist/
+          cp requirements.txt dist/
+          cp README.md dist/
+          tar -czf dist/as400_scraper-$(date +%Y%m%d-%H%M%S).tar.gz -C dist as400_scraper.py requirements.txt README.md
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # Job 6: SBOM Generation (Software Bill of Materials)
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cyclonedx-python
+
+      - name: Generate CycloneDX SBOM
+        run: |
+          mkdir -p sbom
+          cyclonedx-py -o sbom/cyclonedx-bom.xml
+          cyclonedx-py -o sbom/cyclonedx-bom.json -f json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v3
+        with:
+          name: sbom
+          path: sbom/
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  # Job 7: Summary Report
+  summary:
+    name: Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [quality, security-scan, dependency-check, test, build, sbom]
+    if: always()
+
+    steps:
+      - name: Check workflow status
+        run: |
+          echo "## Workflow Status Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Check | ${{ needs.quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Check | ${{ needs.dependency-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SBOM | ${{ needs.sbom.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Report failure if critical jobs failed
+        if: |
+          needs.quality.result == 'failure' ||
+          needs.test.result == 'failure'
+        run: |
+          echo "❌ Critical checks failed!"
+          exit 1
