@@ -76,7 +76,7 @@ jobs:
 
       - name: Upload Bandit report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bandit-report-py${{ matrix.python-version }}
           path: bandit-report.json
@@ -106,7 +106,7 @@ jobs:
 
       - name: Upload Snyk reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: snyk-results
           path: |
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload Safety report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: safety-report
           path: safety-report.json
@@ -195,7 +195,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         if: always()
         with:
           files: ./coverage.xml
@@ -205,7 +205,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-py${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml
@@ -213,7 +213,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report-py${{ matrix.python-version }}
           path: htmlcov/
@@ -248,7 +248,7 @@ jobs:
           tar -czf dist/as400_scraper-$(date +%Y%m%d-%H%M%S).tar.gz -C dist as400_scraper.py requirements.txt README.md
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: dist/
@@ -289,7 +289,7 @@ jobs:
           cyclonedx-py -o sbom/cyclonedx-bom.json -f json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom
           path: sbom/
