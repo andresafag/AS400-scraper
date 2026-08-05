@@ -285,8 +285,8 @@ jobs:
       - name: Generate CycloneDX SBOM
         run: |
           mkdir -p sbom
-          cyclonedx-py -o sbom/cyclonedx-bom.xml
-          cyclonedx-py -o sbom/cyclonedx-bom.json -f json
+          cyclonedx-py requirements -o sbom/cyclonedx-bom.xml
+          cyclonedx-py requirements --format json -o sbom/cyclonedx-bom.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
