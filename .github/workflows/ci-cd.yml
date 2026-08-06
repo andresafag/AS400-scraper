@@ -281,12 +281,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install cyclonedx-bom
+          pip install xmltodict
 
       - name: Generate CycloneDX SBOM
         run: |
           mkdir -p sbom
-          cyclonedx-py requirements -o sbom/cyclonedx-bom.xml
-          cyclonedx-py requirements --format json -o sbom/cyclonedx-bom.json
+          # Generate canonical XML (works across cyclonedx-py versions)
+          cyclonedx-py requirements --of XML -o sbom/cyclonedx-bom.xml
+
+          # Convert the XML SBOM to JSON using xmltodict (robust across CLI versions)
+          python - <<'PY'
+          import xmltodict, json
+          with open('sbom/cyclonedx-bom.xml','rb') as f:
+            obj = xmltodict.parse(f)
+          with open('sbom/cyclonedx-bom.json','w') as out:
+            json.dump(obj, out, indent=2)
+          PY
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
